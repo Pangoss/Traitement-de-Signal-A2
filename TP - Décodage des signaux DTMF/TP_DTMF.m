@@ -95,16 +95,42 @@ end
 % Récupérer uniquement les intervales non nuls
 intervalesFinal = zeros(1,indice-1);
 for n=1:indice-1
-   intervalesFinal(n) = intervales(n); 
+   intervalesFinal(n) = intervales(n);
 end
 
+%------------------------------------------------------------------
+
+% valeurs de références
+fbref = [ 697, 770, 852, 941 ]';
+fhref = [ 1209, 1336, 1477, 1637 ]';
+fref = [697 770 852 941 1209 1336 1477 1637];
+freq_indices = round(fref/Fse*Tydec) + 1;
+dft_data = goertzel(ydec,freq_indices);
+
+figure(6)
+stem(fref,abs(dft_data))
+ax = gca;
+ax.XTick = fref;
+xlabel('Frequency (Hz)')
+title('DFT Magnitude')
+
+dtmf = [ ['1', '2', '3', 'a'];
+         ['4', '5', '6', 'b'];
+         ['7', '8', '9', 'c'];
+         ['*', '0', '#', 'd'];
+       ];
+   
+for l=1:(length(intervalesFinal))/2
+    x1 = intervalesFinal(l);
+    x2 = intervalesFinal(l+1);
+    
 % FFT portion du signal
-portion = fft(ydec(6436:6888),2000);
+portion = fft(ydec(x1:x2),2000);
 fAxis=-Fse/2:Fse/2000:Fse/2-Fse/2000;
 
 [M,I]=max(abs(portion));
 freq1=2000-I*Fse/2000;
-display(freq1);
+% display(freq1);
 
 for n=I-70:I+70
     portion(n)=0;
@@ -113,25 +139,22 @@ end
 
 [H,G]=max(abs(portion));
 freq2=2000-G*Fse/2000;
-display(freq2);
-
-% valeurs de références
-fref = [ 697, 770, 852, 941, 1209, 1336, 1477, 1637 ]';
-dtmf = [ ['1', '2', '3', 'a'];
-         ['4', '5', '6', 'b'];
-         ['7', '8', '9', 'c'];
-         ['*', '0', '#', 'd'];
-       ];
+% display(freq2);
 
 % Détermincation du bouton
-for n=1:length(fref)
-   if (freq1 <= (fref(n)+fref(n)*1.5/100)) && (freq1 >= (fref(n)-fref(n)*1.5/100))
-       disp(fref(n));
+
+for n=1:length(fbref)
+   if ((freq1 <= (fbref(n)+fbref(n)*3/100)) && (freq1 >= (fbref(n)-fbref(n)*3/100))) || ((freq1 <= (fhref(n)+fhref(n)*3/100)) && (freq1 >= (fhref(n)-fhref(n)*3/100)))
+       disp(n);
    end
-   if (freq2 <= (fref(n)+fref(n)*1.5/100)) && (freq2 >= (fref(n)-fref(n)*1.5/100))
-       disp(fref(n));
+   if ((freq2 <= (fbref(n)+fbref(n)*3/100)) && (freq2 >= (fbref(n)-fbref(n)*3/100))) || ((freq2 <= (fhref(n)+fhref(n)*3/100)) && (freq2 >= (fhref(n)-fhref(n)*3/100)))
+       disp(n);
    end
 end
+% disp(dtmf(INDEX1,INDEX2));
+
+end
+%------------------------------------------------------------------
 
 
 % les figures affichées
@@ -208,4 +231,4 @@ periodogram(ydec,[],[],Fse)
 
 % Portion 1
 figure(4)
-plot(fAxis,abs(portion)),
+plot(fAxis,abs(portion))
