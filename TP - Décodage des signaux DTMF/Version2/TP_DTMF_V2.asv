@@ -1,4 +1,5 @@
-% TP_DTMF réalisé par David FENG (10250) et Kenza Kettani (10280)
+clear
+clc
 
 % Chargement le fichier audio
 [s,Fs] = audioread('0123456789.wav');
@@ -77,8 +78,8 @@ B1637=F1637.tf.den;
 
 F1=zeros(1,4);
 F2=zeros(1,4);
-
-for i= 1:length(startPositions)
+%length(startPositions)
+for i= 1:1
     portionsignal=y(startPositions(i):endPositions(i));
     
     liste1=zeros(1,4);
@@ -102,38 +103,33 @@ for i= 1:length(startPositions)
     spectre770=abs(fft(newsignal770));
     liste1(2)=max(spectre770(indexflow1:indexflow2));
     
-    % détection 852 Hz
     newsignal852=filter(A852, B852, portionsignal);
     spectre852=abs(fft(newsignal852));
     liste1(3)=max(spectre852);
     
-    % détection 941 Hz
     newsignal941=filter(A941, B941, portionsignal);
     spectre941=abs(fft(newsignal941));
     liste1(4)=max(spectre941);
     
-    % détection 1209 Hz
-    newsignal1209=filter(A1209, B1209, portionsignal);
-    spectre1209=abs(fft(newsignal1209));
-    liste2(1)=max(spectre1209);
-    
-    % détection 1336 Hz
-    newsignal1336=filter(A1336, B1336, portionsignal);
-    spectre1336=abs(fft(newsignal1336));
-    liste2(2)=max(spectre1336);
-    
-    % détection 1477 Hz
-    newsignal1477=filter(A1477, B1477, portionsignal);
-    spectre1477=abs(fft(newsignal1477));
-    liste2(3)=max(spectre1477);
-    
-    % détection 1637 Hz
-    newsignal1637=filter(A1637, B1637, portionsignal);
-    spectre1637=abs(fft(newsignal1637));
-    liste2(4)=max(spectre1637);
-    
+%     newsignal1209=filter(A1209, B1209, portionsignal);
+%     spectre1209=abs(fft(newsignal1209));
+%     [~,liste2(1)]=max(spectre1209);
+%     
+%     newsignal1336=filter(A1336, B1336, portionsignal);
+%     spectre1336=abs(fft(newsignal1336));
+%     [~,liste2(2)]=max(spectre1336);
+%     
+%     newsignal1477=filter(A1477, B1477, portionsignal);
+%     spectre1477=abs(fft(newsignal1477));
+%     [~,liste2(3)]=max(spectre1477);
+%     
+%     newsignal1637=filter(A1637, B1637, portionsignal);
+%     spectre1637=abs(fft(newsignal1637));
+%     [~,liste2(4)]=max(spectre1637);
     [~, valeur1]=max(liste1);
     [~, valeur2]=max(liste2);
+%     valeur1=find(liste1==max(liste1));
+%     valeur2=find(liste2==max(liste2));
     
     if(valeur1==1 && valeur2==1)
         disp(dtmf(1));
