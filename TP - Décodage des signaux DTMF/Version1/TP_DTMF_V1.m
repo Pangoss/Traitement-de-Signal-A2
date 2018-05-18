@@ -1,4 +1,4 @@
-% TP_DTMF réalisé par David FENG (10250) et Kenza Kettani (10280)
+% TP_DTMF réalisé par David FENG (10250) et Kenza Kettani (10279)
 
 % Chargement le fichier audio
 [s,Fs] = audioread('numero4.wav');
