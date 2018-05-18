@@ -2,7 +2,7 @@ clear
 clc
 
 % Chargement le fichier audio
-[s,Fs] = audioread('0123456789.wav');
+[s,Fs] = audioread('numero4.wav');
 
 L = length(s); % Longueur du signal original
 Ts = 1/Fs; % Période du signal originial
@@ -32,6 +32,9 @@ Fsepas = Fse/(Lydec-1); % pas fréquentiel du signal décimé
 tdec = 0:Tydec:(Lydec-1)*Tydec; % intervalle de temps
 fdec = 0:Fsepas:Fse; % intervalle de fréquences d'étude
 
+% Puissance du signal décimé
+Powerydec = ydec.*ydec;
+
 % FFT du signal d'origine
 Sfft = fft(s); % transformée de Fourier du signal d'origine
 Sabs = abs(Sfft); % abs de la fft du signal s
@@ -48,20 +51,19 @@ Ydecabs = abs(Ydecfft); % abs de la fft du signal filtré 440 Hz et décimé
 Ydecdb = 20*log10(Ydecabs); % gain en dB du signal filtré 440 Hz et décimé
 
 % Détermination de la puissance seuil bruit
-Pbruitseuil = 24;
+noCoeffs = 120;
+coeffs = ones(noCoeffs,1)/noCoeffs;
+filteredSignal = filter(coeffs,1,Powerydec);
+Pbruitseuil = max(filteredSignal)/2;
 
-% Détection de la présence du signal
-K=70;
+% presence = filteredSignal>Pbruitseuil;
+K = 70;
 presence = zeros(1,Lydec);
-for n=1+K:Lydec-K
-    ydecfen = ydec(n-K:n+K);
-    Ydecfen = fft(ydecfen);
-    Ydecfenabs = abs(Ydecfen);
-    Ydecfendb = 20*log10(Ydecfenabs);
-    if Ydecfendb <= Pbruitseuil
-        presence(n-K)=0;
+for n=1:Lydec
+    if filteredSignal(n) < Pbruitseuil
+        presence(n)=0;
     else
-        presence(n-K)=1;
+        presence(n)=1;
     end
 end
 
@@ -79,7 +81,7 @@ for n=1+K:Lydec-K
 end
 
 % Récupérer les intervales des notes
-intervales = zeros(1,60); % changer la taille en fonction du nombre de notes
+intervales = zeros(1,100); % changer la taille en fonction du nombre de notes
 indice = 1;
 for n=1:(length(presence)-1)
     if (presence(n)==0) && (presence(n+1)==1)
@@ -101,8 +103,8 @@ end
 %------------------------------------------------------------------
 
 % valeurs de références
-fbref = [ 697, 770, 852, 941 ]';
-fhref = [ 1209, 1336, 1477, 1637 ]';
+fbref = [ 697, 770, 852, 941 ];
+fhref = [ 1209, 1336, 1477, 1637 ];
 fref = [697 770 852 941 1209 1336 1477 1637];
 freq_indices = round(fref/Fse*Tydec) + 1;
 dft_data = goertzel(ydec,freq_indices);
@@ -119,43 +121,87 @@ dtmf = [ ['1', '2', '3', 'a'];
          ['7', '8', '9', 'c'];
          ['*', '0', '#', 'd'];
        ];
-   
-for l=1:(length(intervalesFinal))/2
-    x1 = intervalesFinal(l);
-    x2 = intervalesFinal(l+1);
+
+F1=zeros(1,8);
+F2=zeros(1,8);
+for l=1:2:(length(intervalesFinal))
+x1 = intervalesFinal(l);
+x2 = intervalesFinal(l+1);
     
 % FFT portion du signal
-portion = fft(ydec(x1:x2),2000);
-fAxis=-Fse/2:Fse/2000:Fse/2-Fse/2000;
+portionsignal = signal(x1:x2);
+portion = abs(fft(portionsignal));
+%fAxis=-Fse/2:Fse/2048:Fse/2-Fse/2048;
 
-[M,I]=max(abs(portion));
-freq1=2000-I*Fse/2000;
-% display(freq1);
+iflow1 = round(600*length(portionsignal)/Fse);
+iflow2 = round(1000*length(portionsignal)/Fse);
 
-for n=I-70:I+70
-    portion(n)=0;
-    portion(1000+(1000-n))=0;
-end
+ifhigh1 = round(1100*length(portionsignal)/Fse);
+ifhigh2 = round(1600*length(portionsignal)/Fse);
 
-[H,G]=max(abs(portion));
-freq2=2000-G*Fse/2000;
-% display(freq2);
+[M,I1] = max(portion(iflow1:iflow2));
+IndexBasseFq = I1+iflow1-1;
+freq1 = IndexBasseFq*Fse/length(portionsignal);
 
-% Détermincation du bouton
+[H,G] = max(portion(ifhigh1:ifhigh2));
+IndexHauteFq = G+ifhigh1-1;
+freq2 = IndexHauteFq*Fse/length(portionsignal);
 
+% Détermination du bouton
 for n=1:length(fbref)
-   if ((freq1 <= (fbref(n)+fbref(n)*3/100)) && (freq1 >= (fbref(n)-fbref(n)*3/100))) || ((freq1 <= (fhref(n)+fhref(n)*3/100)) && (freq1 >= (fhref(n)-fhref(n)*3/100)))
-       disp(n);
-   end
-   if ((freq2 <= (fbref(n)+fbref(n)*3/100)) && (freq2 >= (fbref(n)-fbref(n)*3/100))) || ((freq2 <= (fhref(n)+fhref(n)*3/100)) && (freq2 >= (fhref(n)-fhref(n)*3/100)))
-       disp(n);
-   end
+    F1(n)=abs(freq1-fbref(n));
+    F2(n)=abs(freq2-fbref(n));
 end
-% disp(dtmf(INDEX1,INDEX2));
+for n=length(fbref)+1:(length(fbref)+length(fhref))
+    F1(n)=abs(freq1-fhref(n-4));
+    F2(n)=abs(freq2-fhref(n-4));
+end
+
+valeur1=find(F1==min(F1));
+valeur2=find(F2==min(F2));
+
+if(valeur1>4)
+    valeur1=valeur1-4;
+elseif(valeur2>4)
+    valeur2=valeur2-4;
+end
+
+if(valeur1==1 && valeur2==1)
+    disp(dtmf(1));
+elseif(valeur1==2 && valeur2==1)
+    disp(dtmf(2));
+elseif(valeur1==3 && valeur2==1)
+    disp(dtmf(3));
+elseif(valeur1==4 && valeur2==1)
+    disp(dtmf(4));
+elseif(valeur1==1 && valeur2==2)
+    disp(dtmf(5));
+elseif(valeur1==2 && valeur2==2)
+    disp(dtmf(6));
+elseif(valeur1==3 && valeur2==2)
+    disp(dtmf(7));
+elseif(valeur1==4 && valeur2==2)
+    disp(dtmf(8));
+elseif(valeur1==1 && valeur2==3)
+    disp(dtmf(9));
+elseif(valeur1==2 && valeur2==3)
+    disp(dtmf(10));
+elseif(valeur1==3 && valeur2==3)
+    disp(dtmf(11));
+elseif(valeur1==4 && valeur2==3)
+    disp(dtmf(12));
+elseif(valeur1==1 && valeur2==4)
+    disp(dtmf(13));
+elseif(valeur1==2 && valeur2==4)
+    disp(dtmf(14));
+elseif(valeur1==3 && valeur2==4)
+    disp(dtmf(15));
+elseif(valeur1==4 && valeur2==4)
+    disp(dtmf(16));
+end
 
 end
 %------------------------------------------------------------------
-
 
 % les figures affichées
 figure(1)
@@ -225,10 +271,5 @@ title('Magnitude Spectrum')
 xlabel('Frequency (Hz)')
 ylabel('|X(f)|')
 legend('Frequency Spectrum')
-
 subplot(2,1,2)
 periodogram(ydec,[],[],Fse)
-
-% Portion 1
-figure(4)
-plot(fAxis,abs(portion))
