@@ -12,6 +12,8 @@ t = 0:Ts:(L-1)*Ts; % intervalle de temps
 f = 0:Fspas:Fs; % intervalle de fréquences d'étude
 
 % Filtrage du 440 Hz
+% The dial tone is a sinusoidal signal.
+% Its frequency is equal to 440Hz.
 load 'F440.mat';
 A=F440.tf.num;
 B=F440.tf.den;
@@ -51,13 +53,13 @@ Ydecabs = abs(Ydecfft); % abs de la fft du signal filtré 440 Hz et décimé
 Ydecdb = 20*log10(Ydecabs); % gain en dB du signal filtré 440 Hz et décimé
 
 % Détermination de la puissance seuil bruit
-% ordre 119
+% filtre moyennant les valeurs, ordre 119
 noCoeffs = 120;
 coeffs = ones(noCoeffs,1)/noCoeffs;
 filteredSignal = filter(coeffs,1,Powerydec);
 Pbruitseuil = max(filteredSignal)/2;
 
-% presence = filteredSignal>Pbruitseuil;
+% Signal Binaire de présence
 K = 70;
 presence = zeros(1,Lydec);
 for n=1:Lydec
@@ -67,13 +69,6 @@ for n=1:Lydec
         presence(n)=1;
     end
 end
-
-% Isolation des fréquences
-test=(0:Tydec:(Lydec-1)/Fse);
-NFFT = 2^nextpow2(Lydec);
-Ydectest = fft(ydec,NFFT);
-ftest = Fse/2*linspace(0,1,NFFT/2+1);
-Mag=2*abs(Ydectest(1:NFFT/2+1));
 
 % Récupérer uniquement un signal avec les notes
 signal = zeros(1,Lydec);
@@ -123,20 +118,21 @@ x2 = intervalesFinal(l+1);
 % FFT portion du signal
 portionsignal = signal(x1:x2);
 portion = abs(fft(portionsignal));
-%fAxis=-Fse/2:Fse/2048:Fse/2-Fse/2048;
 
+% Basse fréquence
 indexflow1 = round(600*length(portionsignal)/Fse);
 indexflow2 = round(1000*length(portionsignal)/Fse);
 
+% Haute fréquence
 indexfhigh1 = round(1100*length(portionsignal)/Fse);
-ifhigh2 = round(1600*length(portionsignal)/Fse);
+indexfhigh2 = round(1600*length(portionsignal)/Fse);
 
 [M,I1] = max(portion(indexflow1:indexflow2));
 IndexBasseFq = I1+indexflow1-1;
 freq1 = IndexBasseFq*Fse/length(portionsignal);
 
-[H,G] = max(portion(ifhigh1:ifhigh2));
-IndexHauteFq = G+ifhigh1-1;
+[H,G] = max(portion(indexfhigh1:indexfhigh2));
+IndexHauteFq = G+indexfhigh1-1;
 freq2 = IndexHauteFq*Fse/length(portionsignal);
 
 % Détermination du bouton
@@ -149,15 +145,19 @@ for n=length(fbref)+1:(length(fbref)+length(fhref))
     F2(n)=abs(freq2-fhref(n-4));
 end
 
+% Recherche de la différence la plus basse
+% car une tolérance de 1.5% est beaucoup trop faible
 valeur1=find(F1==min(F1));
 valeur2=find(F2==min(F2));
 
+% Réindexation
 if(valeur1>4)
     valeur1=valeur1-4;
 elseif(valeur2>4)
     valeur2=valeur2-4;
 end
 
+% Combinaison de low et high fréquences
 if(valeur1==1 && valeur2==1)
     disp(dtmf(1));
 elseif(valeur1==2 && valeur2==1)
@@ -253,15 +253,3 @@ plot(fdec,Ydecdb);
 xlabel('fréquence en Hz')
 ylabel('Gains en dB')
 title('fft signal filtré 440 Hz et décimé')
-
-% Présence des fréquences dans le signal
-figure(3)
-subplot(2,1,1)
-plot(ftest,Mag)
-grid on
-title('Magnitude Spectrum')
-xlabel('Frequency (Hz)')
-ylabel('|X(f)|')
-legend('Frequency Spectrum')
-subplot(2,1,2)
-periodogram(ydec,[],[],Fse)
